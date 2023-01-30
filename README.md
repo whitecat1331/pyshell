@@ -5,3 +5,4 @@
 - python pyshell.py --help
 - python pyshell.py -l bash -i 10.10.10.10 8081
 - python pyshell.py -l python -I eth0 7111
+![pyshell examples](./pyshell.png)
