@@ -62,7 +62,7 @@ def get_extension(extension, language, command_extensions):
     elif language in command_extensions:
         return command_extensions[language]
     else:
-        raise click.BadParameter("Must have valid file extension")
+        return ".txt"
 
 
 def create_shell(reverse_shell, language, extension):
