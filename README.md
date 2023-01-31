@@ -7,8 +7,8 @@
 6. python pyshell.py --help
 # Quick Installation
 1. git clone https://github.com/whitecat1331/pyshell.git
-2. python -m venv env
-3. cd pyshell
+2. cd pyshell
+3. python -m venv env
 4. source env/bin/activate
 5. pip install .
 6. pyshell --help
