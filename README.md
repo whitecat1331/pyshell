@@ -1,7 +1,14 @@
-# Shallow-Installation
-1. clone the git repository using the command 'git clone https://github.com/whitecat1331/pyshell.git'
-2. Install dependencies running the command 'pip install -r requriements.txt'
-2. Once the repository is installed or downloaded, run the command 'python pyshell.py --help' for help
+# Manuel Installation
+1. git clone https://github.com/whitecat1331/pyshell.git
+2. pip install -r requriements.txt
+3. python -m venv env
+4. source env/bin/activate
+5. python pyshell.py --help
+# Quick Installation
+1. git clone https://github.com/whitecat1331/pyshell.git
+2. python -m venv env
+3. source env/bin/activate
+4. pip install .
 # Examples:
 - python pyshell.py --help
 - python pyshell.py -l bash -i 10.10.10.10 8081
