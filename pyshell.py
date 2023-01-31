@@ -2,8 +2,6 @@ import click
 import os
 import netifaces
 
-import click
-
 class NotRequiredIf(click.Option):
     def __init__(self, *args, **kwargs):
         self.not_required_if = kwargs.pop('not_required_if')
