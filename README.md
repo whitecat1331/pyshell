@@ -1,8 +1,8 @@
 # Manuel Installation
 1. git clone https://github.com/whitecat1331/pyshell.git
-2. pip install -r requriements.txt
-3. python -m venv env
-4. source env/bin/activate
+2. python -m venv env
+3. source env/bin/activate
+4. pip install -r requriements.txt
 5. python pyshell.py --help
 # Quick Installation
 1. git clone https://github.com/whitecat1331/pyshell.git
