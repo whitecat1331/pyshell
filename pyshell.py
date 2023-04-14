@@ -2,6 +2,7 @@ import click
 import os
 import netifaces
 
+
 class NotRequiredIf(click.Option):
     def __init__(self, *args, **kwargs):
         self.not_required_if = kwargs.pop('not_required_if')
@@ -66,7 +67,7 @@ def get_extension(extension, language, command_extensions):
 
 
 def create_shell(reverse_shell, language, extension):
-    shell_path = language + extension
+    shell_path = f"{GENERATED_SHELLS}/{language}.{extension}"
     try:
         with click.open_file(shell_path, "w") as f:
             f.write(reverse_shell)
@@ -76,14 +77,13 @@ def create_shell(reverse_shell, language, extension):
 
 
 # path to reverse shells
-SHELL_PATH = "shells"
+SHELL_PATH = "template_shells"
 SUPPORTED_LANGUAGES = get_all_options(SHELL_PATH)
 SYSTEM_INTERFACES = netifaces.interfaces()
+GENERATED_SHELLS = "generated_shells"
 # bash.txt  groovy.txt  java.txt  netcat.txt  perl.txt  php.txt  python.txt  ruby.txt  telnet.txt  xterm.txt
 COMMAND_EXTENSIONS = {
-    "bash": ".sh",
-    "groovy": ".groovy",
-    "java": ".java",
+    "bash": ".sh", "groovy": ".groovy", "java": ".java",
     "netcat": ".txt",
     "perl": ".pl",
     "php": ".php",
@@ -113,7 +113,7 @@ COMMAND_EXTENSIONS = {
     not_required_if="ip"
 )
 @click.option("-e", "--extension", "extension", type=str)
-# add propmpt?
+
 @click.argument("port", type=int)
 def generate(language, ip, interface, extension, port):
     raw_shell = load(SHELL_PATH, language)
