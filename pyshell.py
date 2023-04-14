@@ -78,7 +78,7 @@ def create_shell(reverse_shell, language, extension):
 
 # path to reverse shells
 SHELL_PATH = "template_shells"
-SUPPORTED_LANGUAGES = get_all_options(SHELL_PATH)
+SHELL_TEMPLATES = get_all_options(SHELL_PATH)
 SYSTEM_INTERFACES = netifaces.interfaces()
 GENERATED_SHELLS = "generated_shells"
 # bash.txt  groovy.txt  java.txt  netcat.txt  perl.txt  php.txt  python.txt  ruby.txt  telnet.txt  xterm.txt
@@ -96,11 +96,11 @@ COMMAND_EXTENSIONS = {
 # main command
 @click.command()
 @click.option(
-    "-l",
-    "--language",
-    "language",
+    "-s",
+    "--shell",
+    "shell",
     required=True,
-    type=click.Choice(SUPPORTED_LANGUAGES),
+    type=click.Choice(SHELL_TEMPLATES),
     prompt=True,
 )
 @click.option("-i", "--ip", "ip", type=str, cls=NotRequiredIf, not_required_if="interface")
@@ -115,12 +115,12 @@ COMMAND_EXTENSIONS = {
 @click.option("-e", "--extension", "extension", type=str)
 
 @click.argument("port", type=int)
-def generate(language, ip, interface, extension, port):
-    raw_shell = load(SHELL_PATH, language)
+def generate(shell, ip, interface, extension, port):
+    raw_shell = load(SHELL_PATH, shell)
     lhost = get_ip(ip, interface)
     reverse_shell = inject(raw_shell, lhost, port)
-    extension = get_extension(extension, language, COMMAND_EXTENSIONS)
-    create_shell(reverse_shell, language, extension)
+    extension = get_extension(extension, shell, COMMAND_EXTENSIONS)
+    create_shell(reverse_shell, shell, extension)
     click.echo("Shell Generated Successfully")
 
 
