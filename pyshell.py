@@ -42,20 +42,32 @@ def load(shell_directory, command):
     except:
         raise click.UsageError("Shell path not found")
 
+    finally:
+        return None
+
+
 
 def inject(shell, lhost, lport):
     return shell.format(lhost=lhost, lport=lport)
 
+# only return one parameter or the other 
+def get_exclusive(possible_parameters, exception):
+    all_values = list(possible_parameters.values())
+    if not bool(all_values[0]) ^ bool(all_values[1]):
+        raise exception
+
+    for value in all_values:
+        if value:
+            return value
+
 
 # handle lhost inputs
 def get_ip(ip, interface):
-    if ip and not interface:
-        return ip
-    elif not ip and interface:
-        return netifaces.ifaddresses(interface)[2][0]["addr"]
-    else:
-        raise click.BadParameter("Must enter ip or interface")
+    return get_exclusive({ip: ip, interface: netifaces.ifaddresses(interface)[2][0]["addr"]}, click.BadParameter("Must enter ip or interface"))
 
+def get_shell(template, shell, shell_dir):
+    return get_exclusive({template: template.read(), shell: load(shell_dir, shell)}, click.BadParameter("Must enter a shell or shell template")), shell if shell else template.name
+        
 
 def get_extension(extension, language, command_extensions):
     if extension:
@@ -67,7 +79,9 @@ def get_extension(extension, language, command_extensions):
 
 
 def create_shell(reverse_shell, language, extension):
-    shell_path = f"{GENERATED_SHELLS}/{language}.{extension}"
+    if not os.path.exists(GENERATED_SHELLS):
+        os.mkdir(GENERATED_SHELLS)
+    shell_path = os.path.join(GENERATED_SHELLS, f"{language}{extension}")
     try:
         with click.open_file(shell_path, "w") as f:
             f.write(reverse_shell)
@@ -77,7 +91,8 @@ def create_shell(reverse_shell, language, extension):
 
 
 # path to reverse shells
-SHELL_PATH = "template_shells"
+FILE_CWD = os.path.dirname(os.path.realpath(__file__))
+SHELL_PATH = os.path.join(FILE_CWD, "template_shells")
 SHELL_TEMPLATES = get_all_options(SHELL_PATH)
 SYSTEM_INTERFACES = netifaces.interfaces()
 GENERATED_SHELLS = "generated_shells"
@@ -99,10 +114,20 @@ COMMAND_EXTENSIONS = {
     "-s",
     "--shell",
     "shell",
-    required=True,
     type=click.Choice(SHELL_TEMPLATES),
-    prompt=True,
+    cls=NotRequiredIf,
+    not_required_if="template",
+    prompt=True
 )
+@click.option(
+        "-t",
+        "--template",
+        "template",
+        type=click.File("r"),
+        cls=NotRequiredIf,
+        not_required_if="shell",
+        prompt=True
+        )
 @click.option("-i", "--ip", "ip", type=str, cls=NotRequiredIf, not_required_if="interface")
 @click.option(
     "-I",
@@ -113,14 +138,13 @@ COMMAND_EXTENSIONS = {
     not_required_if="ip"
 )
 @click.option("-e", "--extension", "extension", type=str)
-
 @click.argument("port", type=int)
-def generate(shell, ip, interface, extension, port):
-    raw_shell = load(SHELL_PATH, shell)
+def generate(shell, template, ip, interface, extension, port):
+    raw_shell, shell_name = get_shell(template, shell, SHELL_PATH)
     lhost = get_ip(ip, interface)
     reverse_shell = inject(raw_shell, lhost, port)
     extension = get_extension(extension, shell, COMMAND_EXTENSIONS)
-    create_shell(reverse_shell, shell, extension)
+    create_shell(reverse_shell, shell_name, extension)
     click.echo("Shell Generated Successfully")
 
 
