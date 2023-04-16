@@ -1,7 +1,12 @@
 import click
 import os
 import netifaces
-
+import http.server
+import socketserver
+from pyNfsClient import (Portmap, Mount, NFSv3, MNT3_OK, NFS_PROGRAM,NFS_V3, NFS3_OK, DATA_SYNC)
+from pyftpdlib.handlers import FTPHandler, ThrottledDTPHandler
+from pyftpdlib.servers import FTPServer as FTPS
+from pyftpdlib.authorizers import DummyAuthorizer
 
 class NotRequiredIf(click.Option):
     def __init__(self, *args, **kwargs):
@@ -27,6 +32,69 @@ class NotRequiredIf(click.Option):
 
         return super(NotRequiredIf, self).handle_parse_result(
             ctx, opts, args)
+
+class FileServer:
+    def __init__(self, lport, lhost='', username="anonymous", password="anonymous"):
+        self.lport = lport
+        self.lhost = lhost
+        self.username = username
+        self.password = password
+
+    def start_server(self):
+        make_generated_directory()
+        os.chdir(GENERATED_SHELLS)
+
+
+    def print_start(self):
+        click.echo(f"Starting {self.__class__.__name__} on {self.lhost}:{self.lport}")
+
+class HTTPServer(FileServer):
+    def __init__(self, lport):
+        FileServer.__init__(self, lport)
+
+    def start_server(self):
+        FileServer.start_server(self)
+        handler = http.server.SimpleHTTPRequestHandler
+        httpd = socketserver.TCPServer((self.lhost, self.lport), handler)
+        self.print_start()
+        httpd.serve_forever()
+
+class FTPServer(FileServer):
+    def __init__(self, lport):
+        FileServer.__init__(self, lport)
+
+    def start_server(self):
+        FileServer.start_server(self)
+        authorizer = DummyAuthorizer()
+        authorizer.add_user(self.username, self.password, os.getcwd(), perm='elradfmw')
+        handler = FTPHandler
+        handler.authorizer = authorizer
+        handler.banner = "pyftplibd based ftpd ready"
+        address = (self.lhost, self.lport)
+        server = FTPS(address, handler)
+        server.max_cons = 256
+        server.max_cons_per_ip = 5
+        FileServer.print_start(self)
+        server.serve_forever()
+
+class NFSServer(FileServer):
+    def __init__(self, lport):
+        FileServer.__init__(self, lport)
+
+    def start_server(self):
+        FileServer.start_server(self)
+        self.mount_path = "/nfsshare"
+        self.auth = {
+                "flavor": 1,
+                "machine_name": "host1",
+                "uid": 0,
+                "gid": 0,
+                "aux_gid": list(),
+                }
+        self.
+
+
+        
 
 # return all shell commands
 def get_all_options(path):
@@ -68,6 +136,9 @@ def get_ip(ip, interface):
 def get_shell(template, shell, shell_dir):
     return get_exclusive({template: template.read(), shell: load(shell_dir, shell)}, click.BadParameter("Must enter a shell or shell template")), shell if shell else template.name
         
+def make_generated_directory():
+    if not os.path.isdir(GENERATED_SHELLS):
+        os.mkdir(GENERATED_SHELLS)
 
 def get_extension(extension, language, command_extensions):
     if extension:
@@ -79,8 +150,7 @@ def get_extension(extension, language, command_extensions):
 
 
 def create_shell(reverse_shell, language, extension):
-    if not os.path.exists(GENERATED_SHELLS):
-        os.mkdir(GENERATED_SHELLS)
+    make_generated_directory()
     shell_path = os.path.join(GENERATED_SHELLS, f"{language}{extension}")
     try:
         with click.open_file(shell_path, "w") as f:
@@ -98,7 +168,9 @@ SYSTEM_INTERFACES = netifaces.interfaces()
 GENERATED_SHELLS = "generated_shells"
 # bash.txt  groovy.txt  java.txt  netcat.txt  perl.txt  php.txt  python.txt  ruby.txt  telnet.txt  xterm.txt
 COMMAND_EXTENSIONS = {
-    "bash": ".sh", "groovy": ".groovy", "java": ".java",
+    "bash": ".sh", 
+    "groovy": ".groovy", 
+    "java": ".java",
     "netcat": ".txt",
     "perl": ".pl",
     "php": ".php",
