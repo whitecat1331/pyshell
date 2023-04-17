@@ -34,7 +34,7 @@ class NotRequiredIf(click.Option):
             ctx, opts, args)
 
 class FileServer:
-    def __init__(self, lport, lhost='', username="anonymous", password="anonymous"):
+    def __init__(self, name, lport, lhost='', username="anonymous", password="anonymous"):
         self.lport = lport
         self.lhost = lhost
         self.username = username
@@ -48,22 +48,40 @@ class FileServer:
     def print_start(self):
         click.echo(f"Starting {self.__class__.__name__} on {self.lhost}:{self.lport}")
 
-class HTTPServer(FileServer):
-    def __init__(self, lport):
-        FileServer.__init__(self, lport)
+    def print_exit(self):
+        click.echo(f"Closing {self.__class__.__name__} on {self.lhost}:{self.lport}")
 
-    def start_server(self):
+    def __enter__(self):
+        pass
+
+    def __exit__(self):
+        self.print_exit()
+
+    def serve_until_interrupt(self, httpd):
+        self.print_start()
+        try:
+            httpd.serve_forever()
+        except KeyboardInterrupt:
+            print("KeyboardInterrupt: Shutting Server Down")
+        
+class HTTPServer(FileServer):
+    SERVER_NAME = "http"
+    def __init__(self, lport):
+        FileServer.__init__(self, self.SERVER_NAME, lport)
+
+    def __enter__(self):
         FileServer.start_server(self)
         handler = http.server.SimpleHTTPRequestHandler
         httpd = socketserver.TCPServer((self.lhost, self.lport), handler)
         self.print_start()
-        httpd.serve_forever()
+        FileServer.serve_until_interrupt(self, httpd)
 
 class FTPServer(FileServer):
+    SERVER_NAME = "ftp"
     def __init__(self, lport):
-        FileServer.__init__(self, lport)
+        FileServer.__init__(self, self.SERVER_NAME, lport)
 
-    def start_server(self):
+    def __enter__(self):
         FileServer.start_server(self)
         authorizer = DummyAuthorizer()
         authorizer.add_user(self.username, self.password, os.getcwd(), perm='elradfmw')
@@ -74,24 +92,15 @@ class FTPServer(FileServer):
         server = FTPS(address, handler)
         server.max_cons = 256
         server.max_cons_per_ip = 5
-        FileServer.print_start(self)
-        server.serve_forever()
+        self.print_start()
+        FileServer.serve_until_interrupt(self, server)
+
 
 class NFSServer(FileServer):
-    def __init__(self, lport):
-        FileServer.__init__(self, lport)
+    pass
 
-    def start_server(self):
-        FileServer.start_server(self)
-        self.mount_path = "/nfsshare"
-        self.auth = {
-                "flavor": 1,
-                "machine_name": "host1",
-                "uid": 0,
-                "gid": 0,
-                "aux_gid": list(),
-                }
-        self.
+class SMBServer(FileServer):
+    pass
 
 
         
@@ -159,8 +168,19 @@ def create_shell(reverse_shell, language, extension):
     except:
         raise click.UsageError("File not created")
 
+def listen_on(listen):
+    if not listen:
+        return None
+
+    for Server in SUPPORTED_FILE_SERVERS:
+        if Server.name == listen:
+            with Server():
+                pass
+
+
 
 # path to reverse shells
+SUPPORTED_FILE_SERVERS = [HTTPServer, FTPServer]
 FILE_CWD = os.path.dirname(os.path.realpath(__file__))
 SHELL_PATH = os.path.join(FILE_CWD, "template_shells")
 SHELL_TEMPLATES = get_all_options(SHELL_PATH)
@@ -209,15 +229,17 @@ COMMAND_EXTENSIONS = {
     cls=NotRequiredIf,
     not_required_if="ip"
 )
+@click.option("-l", "--listen", "listen", type=click.Choice(SUPPORTED_FILE_SERVERS), prompt=True)
 @click.option("-e", "--extension", "extension", type=str)
 @click.argument("port", type=int)
-def generate(shell, template, ip, interface, extension, port):
+def generate(shell, template, ip, interface, listen, extension, port):
     raw_shell, shell_name = get_shell(template, shell, SHELL_PATH)
     lhost = get_ip(ip, interface)
     reverse_shell = inject(raw_shell, lhost, port)
     extension = get_extension(extension, shell, COMMAND_EXTENSIONS)
     create_shell(reverse_shell, shell_name, extension)
     click.echo("Shell Generated Successfully")
+    listen_on(listen)
 
 
 if __name__ == "__main__":
