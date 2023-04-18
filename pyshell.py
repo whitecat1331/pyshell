@@ -229,7 +229,7 @@ COMMAND_EXTENSIONS = {
     cls=NotRequiredIf,
     not_required_if="ip"
 )
-@click.option("-l", "--listen", "listen", type=click.Choice(SUPPORTED_FILE_SERVERS), prompt=True)
+@click.option("-l", "--listen", "listen", type=click.Choice([server.SERVER_NAME for server in SUPPORTED_FILE_SERVERS]), prompt=True)
 @click.option("-e", "--extension", "extension", type=str)
 @click.argument("port", type=int)
 def generate(shell, template, ip, interface, listen, extension, port):
