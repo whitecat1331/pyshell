@@ -34,7 +34,7 @@ class NotRequiredIf(click.Option):
             ctx, opts, args)
 
 class FileServer:
-    def __init__(self, name, lport, lhost='', username="anonymous", password="anonymous"):
+    def __init__(self, lport, lhost='', username="anonymous", password="anonymous"):
         self.lport = lport
         self.lhost = lhost
         self.username = username
@@ -54,12 +54,12 @@ class FileServer:
     def __enter__(self):
         pass
 
-    def __exit__(self):
+    def __exit__(self, exec_type, exec_value, exec_traceback):
         self.print_exit()
 
     def serve_until_interrupt(self, httpd):
-        self.print_start()
         try:
+            self.print_start()
             httpd.serve_forever()
         except KeyboardInterrupt:
             print("KeyboardInterrupt: Shutting Server Down")
@@ -67,19 +67,18 @@ class FileServer:
 class HTTPServer(FileServer):
     SERVER_NAME = "http"
     def __init__(self, lport):
-        FileServer.__init__(self, self.SERVER_NAME, lport)
+        FileServer.__init__(self, lport)
 
     def __enter__(self):
         FileServer.start_server(self)
         handler = http.server.SimpleHTTPRequestHandler
         httpd = socketserver.TCPServer((self.lhost, self.lport), handler)
-        self.print_start()
         FileServer.serve_until_interrupt(self, httpd)
 
 class FTPServer(FileServer):
     SERVER_NAME = "ftp"
     def __init__(self, lport):
-        FileServer.__init__(self, self.SERVER_NAME, lport)
+        FileServer.__init__(self, lport)
 
     def __enter__(self):
         FileServer.start_server(self)
@@ -92,7 +91,6 @@ class FTPServer(FileServer):
         server = FTPS(address, handler)
         server.max_cons = 256
         server.max_cons_per_ip = 5
-        self.print_start()
         FileServer.serve_until_interrupt(self, server)
 
 
@@ -168,13 +166,13 @@ def create_shell(reverse_shell, language, extension):
     except:
         raise click.UsageError("File not created")
 
-def listen_on(listen):
+def listen_on(listen, port):
     if not listen:
         return None
 
     for Server in SUPPORTED_FILE_SERVERS:
-        if Server.name == listen:
-            with Server():
+        if Server.SERVER_NAME == listen:
+            with Server(port):
                 pass
 
 
@@ -239,7 +237,7 @@ def generate(shell, template, ip, interface, listen, extension, port):
     extension = get_extension(extension, shell, COMMAND_EXTENSIONS)
     create_shell(reverse_shell, shell_name, extension)
     click.echo("Shell Generated Successfully")
-    listen_on(listen)
+    listen_on(listen, port)
 
 
 if __name__ == "__main__":
