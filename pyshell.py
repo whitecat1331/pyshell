@@ -62,7 +62,7 @@ class FileServer:
             self.print_start()
             httpd.serve_forever()
         except KeyboardInterrupt:
-            print("KeyboardInterrupt: Shutting Server Down")
+            click.echo("KeyboardInterrupt: Shutting Server Down")
         
 class HTTPServer(FileServer):
     SERVER_NAME = "http"
@@ -117,54 +117,59 @@ def load(shell_directory, command):
     except:
         raise click.UsageError("Shell path not found")
 
-    finally:
-        return None
-
-
-
 def inject(shell, lhost, lport):
     return shell.format(lhost=lhost, lport=lport)
 
-# only return one parameter or the other 
-def get_exclusive(possible_parameters, exception):
-    all_values = list(possible_parameters.values())
-    if not bool(all_values[0]) ^ bool(all_values[1]):
+
+def mutually_exclusive(arg1, arg2, exception):
+    if not bool(arg1) ^ bool(arg2):
         raise exception
 
-    for value in all_values:
-        if value:
-            return value
-
+    elif arg1:
+        return 0
+    elif arg2:
+        return 1
 
 # handle lhost inputs
 def get_ip(ip, interface):
-    return get_exclusive({ip: ip, interface: netifaces.ifaddresses(interface)[2][0]["addr"]}, click.BadParameter("Must enter ip or interface"))
+    active_arg = mutually_exclusive(ip, interface, click.BadParameter("Must enter ip or interface"))
+    match active_arg:
+        case 0:
+            return ip
+        case 1:
+            return netifaces.ifaddresses(interface)[2][0]["addr"]
+    return None
+    
 
 def get_shell(template, shell, shell_dir):
-    return get_exclusive({template: template.read(), shell: load(shell_dir, shell)}, click.BadParameter("Must enter a shell or shell template")), shell if shell else template.name
+    active_arg = mutually_exclusive(template, shell, click.BadParameter("Must enter a shell or template"))
+    match active_arg:
+        case 0:
+            return template.read()
+        case 1:
+            return load(shell_dir, shell)
+    return (None, None)
         
 def make_generated_directory():
     if not os.path.isdir(GENERATED_SHELLS):
         os.mkdir(GENERATED_SHELLS)
 
 def get_extension(extension, language, command_extensions):
-    if extension:
-        return extension
-    elif language in command_extensions:
-        return command_extensions[language]
-    else:
-        return ".txt"
+    active_arg = mutually_exclusive(extension, language, click.BadParameter("Must enter an extension or language"))
+    match active_arg:
+        case 0:
+            return extension
+        case 1:
+            return command_extensions[language]
+    return None
 
 
-def create_shell(reverse_shell, language, extension):
-    make_generated_directory()
-    shell_path = os.path.join(GENERATED_SHELLS, f"{language}{extension}")
-    try:
-        with click.open_file(shell_path, "w") as f:
-            f.write(reverse_shell)
-
-    except:
-        raise click.UsageError("File not created")
+def create_shell(reverse_shell, output):
+    if not output:
+        click.echo(reverse_shell)
+        return
+    output.write(reverse_shell)
+    click.echo("Shell Generated Successfully")
 
 def listen_on(listen, port):
     if not listen:
@@ -186,16 +191,16 @@ SYSTEM_INTERFACES = netifaces.interfaces()
 GENERATED_SHELLS = "generated_shells"
 # bash.txt  groovy.txt  java.txt  netcat.txt  perl.txt  php.txt  python.txt  ruby.txt  telnet.txt  xterm.txt
 COMMAND_EXTENSIONS = {
-    "bash": ".sh", 
-    "groovy": ".groovy", 
-    "java": ".java",
-    "netcat": ".txt",
-    "perl": ".pl",
-    "php": ".php",
-    "python": ".py",
-    "ruby": ".rb",
-    "telnet": ".txt",
-    "xterm": ".txt",
+    "bash": "sh", 
+    "groovy": "groovy", 
+    "java": "java",
+    "netcat": "txt",
+    "perl": "pl",
+    "php": "php",
+    "python": "py",
+    "ruby": "rb",
+    "telnet": "txt",
+    "xterm": "txt",
 }
 
 # main command
@@ -227,16 +232,14 @@ COMMAND_EXTENSIONS = {
     cls=NotRequiredIf,
     not_required_if="ip"
 )
-@click.option("-l", "--listen", "listen", type=click.Choice([server.SERVER_NAME for server in SUPPORTED_FILE_SERVERS]), prompt=True)
-@click.option("-e", "--extension", "extension", type=str)
+@click.option("-l", "--listen", "listen", type=click.Choice([server.SERVER_NAME for server in SUPPORTED_FILE_SERVERS]))
+@click.option("-o", "--output", "output", type=click.File("w"))
 @click.argument("port", type=int)
-def generate(shell, template, ip, interface, listen, extension, port):
-    raw_shell, shell_name = get_shell(template, shell, SHELL_PATH)
+def generate(shell, template, ip, interface, listen, output, port):
+    raw_shell = get_shell(template, shell, SHELL_PATH)
     lhost = get_ip(ip, interface)
     reverse_shell = inject(raw_shell, lhost, port)
-    extension = get_extension(extension, shell, COMMAND_EXTENSIONS)
-    create_shell(reverse_shell, shell_name, extension)
-    click.echo("Shell Generated Successfully")
+    create_shell(reverse_shell, output)
     listen_on(listen, port)
 
 
