@@ -34,15 +34,14 @@ class NotRequiredIf(click.Option):
             ctx, opts, args)
 
 class FileServer:
-    def __init__(self, lport, lhost='', username="anonymous", password="anonymous"):
+    def __init__(self, lport, lhost, username="anonymous", password="anonymous"):
         self.lport = lport
         self.lhost = lhost
         self.username = username
         self.password = password
 
     def start_server(self):
-        make_generated_directory()
-        os.chdir(GENERATED_SHELLS)
+        click.echo(f"Current Diretory:\n{os.listdir()}")
 
 
     def print_start(self):
@@ -66,8 +65,8 @@ class FileServer:
         
 class HTTPServer(FileServer):
     SERVER_NAME = "http"
-    def __init__(self, lport):
-        FileServer.__init__(self, lport)
+    def __init__(self, lport, lhost=''):
+        FileServer.__init__(self, lport, lhost)
 
     def __enter__(self):
         FileServer.start_server(self)
@@ -77,8 +76,8 @@ class HTTPServer(FileServer):
 
 class FTPServer(FileServer):
     SERVER_NAME = "ftp"
-    def __init__(self, lport):
-        FileServer.__init__(self, lport)
+    def __init__(self, lport, lhost=''):
+        FileServer.__init__(self, lport, lhost)
 
     def __enter__(self):
         FileServer.start_server(self)
@@ -150,10 +149,6 @@ def get_shell(template, shell, shell_dir):
             return load(shell_dir, shell)
     return (None, None)
         
-def make_generated_directory():
-    if not os.path.isdir(GENERATED_SHELLS):
-        os.mkdir(GENERATED_SHELLS)
-
 def get_extension(extension, language, command_extensions):
     active_arg = mutually_exclusive(extension, language, click.BadParameter("Must enter an extension or language"))
     match active_arg:
@@ -171,13 +166,13 @@ def create_shell(reverse_shell, output):
     output.write(reverse_shell)
     click.echo("Shell Generated Successfully")
 
-def listen_on(listen, port):
+def listen_on(listen, port, lhost):
     if not listen:
         return None
 
     for Server in SUPPORTED_FILE_SERVERS:
         if Server.SERVER_NAME == listen:
-            with Server(port):
+            with Server(port, lhost):
                 pass
 
 
@@ -188,7 +183,6 @@ FILE_CWD = os.path.dirname(os.path.realpath(__file__))
 SHELL_PATH = os.path.join(FILE_CWD, "template_shells")
 SHELL_TEMPLATES = get_all_options(SHELL_PATH)
 SYSTEM_INTERFACES = netifaces.interfaces()
-GENERATED_SHELLS = "generated_shells"
 # bash.txt  groovy.txt  java.txt  netcat.txt  perl.txt  php.txt  python.txt  ruby.txt  telnet.txt  xterm.txt
 COMMAND_EXTENSIONS = {
     "bash": "sh", 
@@ -240,7 +234,7 @@ def generate(shell, template, ip, interface, listen, output, port):
     lhost = get_ip(ip, interface)
     reverse_shell = inject(raw_shell, lhost, port)
     create_shell(reverse_shell, output)
-    listen_on(listen, port)
+    listen_on(listen, port, lhost)
 
 
 if __name__ == "__main__":
